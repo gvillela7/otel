@@ -1,0 +1,62 @@
+x-logging:
+  &logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-deploy:
+  &deploy
+  deploy:
+    replicas: 1
+    update_config:
+      parallelism: 2
+      delay: "10s"
+    restart_policy:
+      condition: on-failure
+
+services:
+  service_a:
+    build: ./service_a
+    ports:
+      - "8000:8000"
+    networks:
+      - temp
+    <<: [*logging, *deploy]
+
+  service_b:
+    build: ./service_b
+    ports:
+      - "8001:8001"
+    networks:
+      - temp
+    <<: [ *logging, *deploy ]
+
+  zipkin:
+    image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}
+    container_name: zipkin
+    environment:
+      - STORAGE_TYPE=mem
+    ports:
+      - "9411:9411"
+    networks:
+      - temp
+    <<: [*logging, *deploy]
+
+  zipkin-ui:
+    image: ghcr.io/openzipkin/zipkin-ui:${TAG:-latest}
+    container_name: zipkin-ui
+    environment:
+      - ZIPKIN_BASE_URL=http://zipkin:9411
+    ports:
+      - "80:80"
+    depends_on:
+      zipkin:
+        condition: service_healthy
+    networks:
+      - temp
+    <<: [*logging, *deploy]
+
+networks:
+  temp:

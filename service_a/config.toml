@@ -1,0 +1,9 @@
+[api]
+port = ":8000"
+environment = "staging"
+
+[weather]
+key="your api key"
+
+[zipkin]
+endpoint = "http://zipkin:9411/api/v2/spans"
