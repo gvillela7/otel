@@ -26,8 +26,8 @@ type Temperature struct {
 }
 
 type ViaCep struct {
-	Estado string `json:"estado"`
-	UF     string `json:"uf"`
+	Estado string `json:"estado,omitempty"`
+	UF     string `json:"uf,omitempty"`
 	Erro   string `json:"erro,omitempty"`
 }
 type WeatherResponse struct {
@@ -69,21 +69,16 @@ func (t *Temperature) Celsius(ctx context.Context, cep string, w http.ResponseWr
 	}
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		response.HttpResponse(w, http.StatusInternalServerError, "error read response viacep", nil)
-		return nil, err
-	}
-
 	var viacep ViaCep
-	if err := json.Unmarshal(body, &viacep); err != nil {
-		response.HttpResponse(w, http.StatusInternalServerError, "error Unmarchal json viacep", nil)
+	err = json.NewDecoder(res.Body).Decode(&viacep)
+	if err != nil {
+		response.HttpResponse(w, http.StatusInternalServerError, "error Unmarchal json viacep service_b", nil)
 		return nil, err
 	}
 	if viacep.Erro == "true" {
-		response.HttpResponse(w, http.StatusNotFound, "zipcode not found.", nil)
 		return nil, errors.New("zipcode not found")
 	}
+
 	if viacep.UF == "SP" {
 		viacep.Estado = "Sao_Paulo"
 	}

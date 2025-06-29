@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/gvillela7/temperature/internal/data/response"
 	"io"
 	"net/http"
@@ -15,7 +16,9 @@ type TemperatureCelsius struct {
 	Temp string `json:"temp"`
 }
 type TemperatureResponse struct {
-	Data Data `json:"data"`
+	Data       Data   `json:"data,omitempty"`
+	StatusCode int    `json:"StatusCode,omitempty"`
+	Message    string `json:"message,omitempty"`
 }
 type Data struct {
 	State string  `json:"state"`
@@ -50,25 +53,25 @@ func (t *Temperature) GetTemp(ctx context.Context, cep string, w http.ResponseWr
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://otel-service_b-1:8001/v1/temperature?cep="+cep, nil)
 	if err != nil {
-		response.HttpResponse(w, http.StatusInternalServerError, "error creating request for viacep.", nil)
-		return nil, err
+		response.HttpResponse(w, http.StatusInternalServerError, err.Error(), nil)
+		return nil, errors.New("error creating request to service b")
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		response.HttpResponse(w, http.StatusBadRequest, "request error.", nil)
-		return nil, err
+		return nil, errors.New("error making request to service b")
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		response.HttpResponse(w, http.StatusInternalServerError, "error read response viacep", nil)
-		return nil, err
+		return nil, errors.New("error read response viacep")
 	}
 	var temperatureResponse TemperatureResponse
 	if err := json.Unmarshal(body, &temperatureResponse); err != nil {
-		response.HttpResponse(w, http.StatusInternalServerError, "error Unmarchal json viacep", nil)
-		return nil, err
+		return nil, errors.New("error unmarshalling response from service b")
+	}
+	if temperatureResponse.StatusCode == http.StatusNotFound {
+		return nil, errors.New("zipcode not found")
 	}
 
 	t.State = temperatureResponse.Data.State

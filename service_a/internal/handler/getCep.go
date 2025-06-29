@@ -31,9 +31,16 @@ func GetCep(w http.ResponseWriter, r *http.Request) {
 
 	service := services.NewTemperature()
 	temperature, err := service.GetTemp(r.Context(), cep, w)
-
-	if err == nil {
-		response.HttpResponse(w, http.StatusOK, "success", temperature)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			response.HttpResponse(w, http.StatusNotFound, "Zipcode not found.", nil)
+			return
+		}
+		response.HttpResponse(w, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
+
+	response.HttpResponse(w, http.StatusOK, "success", temperature)
+	return
+
 }
